@@ -1,5 +1,5 @@
-import { POSTS_PATH } from "@/constants";
-import { getPost } from "@/utils/getPost";
+import { POSTS_PATH } from "@/turbo/constants";
+import { getPost } from "@/turbo/utils/getPost";
 import path from "path";
 import fs from 'fs';
 
