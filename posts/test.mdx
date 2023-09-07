@@ -1,0 +1,58 @@
+---
+title: 'title'
+description: 'description'
+icon: 'icon'
+image: 'icon'
+tags:
+  - 
+draft: false
+date: 2023-09-07 17:55:31
+---
+
+💡 **`RouteGuard`**는 page route간에 auth check하는 middleware 컴포넌트입니다.
+
+
+## 도입하게된 이유❓
+
+---
+
+1. 로그인이 필요한 페이지를 `로그인 하지 않거나 JWT 토큰이 만료된 경우에` 라우팅을 시도할경우 로그인 페이지로 **redirect**하기 위해서
+2. 로그인 한 상태에서 `페이지를 reload할 경우` JWT 토큰으로 **날아간 유저정보를 가져오기 위해서**
+
+## 컴포넌트 로직 정리 💡
+
+---
+
+`MyApp` 컴포넌트는 Next.js app의 root component입니다. `<RouteGuard>`는 현재 렌더링되는 page Component `<Component {…pageProps} />`를 children으로 감싸서 **auth 로직**을 실행시키는 middleware의 역할을한다.
+
+![](https://velog.velcdn.com/images/leedaeho1188/post/7edb25bf-8fa0-4210-b268-f14f02572af5/image.png)
+
+
+`RouteGuard` 컴포넌트는 위에서 말했듯이 페이지 routing 이벤트가 시작될 때 auth 체크 로직을 실행시키는 middleware입니다.
+
+- 밑에 코드에따라 순차적으로 로직을 설명하자면, `setUser`(setter 함수)는 파라미터에 유저 정보를 넣어서 recoil(상태 관리 라이브러리)로 관리하는 user state 값을 업데이트합니다.
+- `isAuthenticated`는 현재 클라이언트가 로그인한 상태인지 아닌지를 나타내는 state입니다. boolean type의 값을 가지고있고 default value는 `false`입니다. `setIsAuthenticated`는 isAuthenticated를 업데이트하는 setter 함수입니다.
+- `routeGuardExceptedPathList`는 auth 체크 로직을 함수를 실행할 필요없는 페이지 path를 요소로 가지고있는 배열입니다.
+- `isValidPath`는 현재 페이지 path를 파라미터로 받아서 routeGuardExceptedPathList에 포함된 path인지 확인해서 boolean type을 return하는 callback 함수입니다. `true`를 리턴하면 auth check 함수 실행, `false`를 리턴하면 auth check 함수 실행하지 않습니다.
+
+![](https://velog.velcdn.com/images/leedaeho1188/post/d9498643-6300-465f-bb85-5c8a86823b4f/image.png)
+
+
+- `authCheck` 함수는 로컬스토리지에 저장된 JWT 토큰값으로 클라이언트의 로그인 상태를 확인합니다.
+- `jwtToken` 변수 값이 `undefined`일경우 **로그인을 하지 않았다고 판단하고** 로그인 페이지로 redirect 시킵니다. url query에 returnPath를 추가한 이유는 로그인 페이지로 넘어간뒤에 로그인 성공을하면 원래 routing하려고 했던 페이지로 넘어가게하기 위해서 url query에 path를 저장합니다.
+- `jwtToken` 변수 값이 **undefined가 아닐경우** **JWT 토큰으로 유저 정보를 요청**합니다. `then`으로 return 할 경우 토큰이 만료되지 않았다고 판단하고 return 받은 유저 정보를 setUser에 인수로 전달합니다. 그리고 isAuthenticated 값을 true로 변경합니다. 하지만 `catch`로 return 할 경우 **토큰이 만료되었다고 판단**하고 로그인 페이지로 redirect 시킵니다.
+
+![](https://velog.velcdn.com/images/leedaeho1188/post/e9351a68-3eb9-4778-a338-f383b3f2f6fb/image.png)
+
+
+
+- `RouteGuard` **첫 렌더링시**에 authCheck 함수를 실행합니다. 그리고 **페이지 라우팅이 시작할 때** auth check를 실행하도록 event (`router.events.on(이벤트, 이벤트 일어났을 때 동작하는 함수`)를 등록합니다.  `nextPath` 파라미터는 routing을 시도하는 path를 나타냅니다.
+- `RouteGuard` 컴포넌트가 return 값의 형태는 `null` 또는 `children`입니다. `isAuthenticated`가 false이면서(로그인이 다시 필요한 상태) `isValidPath`가 true이면(현재 페이지로 넘어가기 위해서는 로그인이 필요한 경우) null을 반환을해서 현 페이지 컴포넌트를 렌더링하지 않고 빈 페이지를 보여줍니다. 그 외에 경우에는 page Component를 반환합니다. 예를들어 로그인을 하지 않았거나 JWT토큰이 만료되었더라도 현재 페이지가 로그인 페이지라면 null 대신에 children을 반환합니다. 왜냐하면 로그인 페이지에서는 로그인이 되지 않은 상태에서 정상적으로 화면을 렌더링할 수 있기 때문입니다.
+
+![](https://velog.velcdn.com/images/leedaeho1188/post/79426b4c-72e6-440e-bae3-5fb126e4a4e7/image.png)
+
+---
+
+- [Next.js - Redirect to Login Page if Unauthenticated](https://jasonwatmore.com/post/2021/08/30/next-js-redirect-to-login-page-if-unauthenticated#_app-js)
+
+
